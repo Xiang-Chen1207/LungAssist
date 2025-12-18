@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>肺结节标注辅助工具 - LIDC-IDRI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 28px;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-dot.offline {
+            background: #f44336;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .drop-zone {
+            flex: 0 0 300px;
+            height: 150px;
+            border: 3px dashed #444;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .drop-zone svg {
+            width: 48px;
+            height: 48px;
+            fill: #666;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone.dragover svg {
+            fill: #4CAF50;
+        }
+
+        .drop-zone p {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .mode-selector {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .mode-selector h3 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            border-color: #4CAF50;
+        }
+
+        .mode-btn.active {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .mode-btn h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .mode-btn p {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .results-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .panel h3 {
+            font-size: 16px;
+            color: #4CAF50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .image-container {
+            position: relative;
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .image-placeholder {
+            color: #444;
+            font-size: 14px;
+        }
+
+        .processing-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .step-item {
+            text-align: center;
+        }
+
+        .step-item .image-container {
+            aspect-ratio: 1;
+            margin-bottom: 8px;
+        }
+
+        .step-item p {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .result-panel .image-container {
+            min-height: 300px;
+        }
+
+        .stats-box {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+
+        .stats-box h4 {
+            font-size: 14px;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            font-size: 13px;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #333;
+            border-top-color: #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #888;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .legend-color.red {
+            background: rgba(255, 0, 0, 0.6);
+        }
+
+        .legend-color.green {
+            background: rgba(0, 255, 0, 0.6);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            background: #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1001;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+
+        .toast.success {
+            background: #4CAF50;
+        }
+
+        /* 画布容器 - 用于ROI绘制 */
+        .canvas-container {
+            position: relative;
+        }
+
+        .canvas-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        .instructions {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(76, 175, 80, 0.1);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>肺结节标注辅助工具</h1>
+            <p>LIDC-IDRI 医学图像分析系统</p>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-dot" id="modelStatus"></span>
+                    <span id="modelStatusText">检查模型状态...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="deviceStatus"></span>
+                    <span id="deviceStatusText">检查设备...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="control-panel">
+            <div class="drop-zone" id="dropZone">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                </svg>
+                <p>拖拽图片到此处<br>或点击选择文件</p>
+            </div>
+            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff">
+
+            <div class="mode-selector">
+                <h3>选择标记模式</h3>
+                <div class="mode-buttons">
+                    <div class="mode-btn active" data-mode="assisted">
+                        <h4>辅助标记</h4>
+                        <p>C3处理流程 + U-Net</p>
+                    </div>
+                    <div class="mode-btn" data-mode="direct">
+                        <h4>直接标记</h4>
+                        <p>仅U-Net模型预测</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="processBtn" disabled>开始处理</button>
+                <button class="btn btn-secondary" id="clearBtn">清除</button>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <!-- 左侧：输入图像 -->
+            <div class="panel">
+                <h3>输入图像</h3>
+                <div class="canvas-container">
+                    <div class="image-container" id="inputContainer">
+                        <span class="image-placeholder">等待上传图像...</span>
+                    </div>
+                </div>
+                <div class="instructions" id="roiInstructions" style="display:none;">
+                    辅助模式下可在图像上框选感兴趣区域
+                </div>
+            </div>
+
+            <!-- 中间：处理步骤 -->
+            <div class="panel" id="stepsPanel">
+                <h3>C3 处理流程 (CLAHE + 中值 + 边缘检测 + GHPF + Otsu)</h3>
+                <div class="processing-steps">
+                    <div class="step-item">
+                        <div class="image-container" id="step1">
+                            <span class="image-placeholder">CLAHE增强</span>
+                        </div>
+                        <p>1. CLAHE增强</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="image-container" id="step2">
+                            <span class="image-placeholder">中值滤波</span>
+                        </div>
+                        <p>2. 中值滤波去噪</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="image-container" id="step3">
+                            <span class="image-placeholder">边缘检测</span>
+                        </div>
+                        <p>3. Canny边缘检测</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="image-container" id="step4">
+                            <span class="image-placeholder">ROI区域</span>
+                        </div>
+                        <p>4. ROI区域提取</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="image-container" id="step5">
+                            <span class="image-placeholder">GHPF滤波</span>
+                        </div>
+                        <p>5. GHPF高通滤波</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="image-container" id="step6">
+                            <span class="image-placeholder">传统预测</span>
+                        </div>
+                        <p>6. 传统方法预测</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：U-Net结果 -->
+            <div class="panel result-panel">
+                <h3>U-Net 模型预测结果</h3>
+                <div class="image-container" id="resultContainer">
+                    <span class="image-placeholder">等待处理...</span>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-color red"></span>
+                        <span>传统方法</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color green"></span>
+                        <span>U-Net预测</span>
+                    </div>
+                </div>
+                <div class="stats-box" id="statsBox" style="display:none;">
+                    <h4>检测统计</h4>
+                    <div class="stat-row">
+                        <span class="stat-label">结节像素数</span>
+                        <span class="stat-value" id="nodulePixels">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">总像素数</span>
+                        <span class="stat-value" id="totalPixels">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">占比</span>
+                        <span class="stat-value" id="percentage">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="spinner"></div>
+            <p class="loading-text">处理中，请稍候...</p>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 全局变量
+        let currentFile = null;
+        let currentMode = 'assisted';
+
+        // DOM元素
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const inputContainer = document.getElementById('inputContainer');
+        const resultContainer = document.getElementById('resultContainer');
+        const stepsPanel = document.getElementById('stepsPanel');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const statsBox = document.getElementById('statsBox');
+        const toast = document.getElementById('toast');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            setupEventListeners();
+        });
+
+        // 检查系统状态
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                const modelStatus = document.getElementById('modelStatus');
+                const modelStatusText = document.getElementById('modelStatusText');
+                const deviceStatus = document.getElementById('deviceStatus');
+                const deviceStatusText = document.getElementById('deviceStatusText');
+
+                if (data.model_loaded) {
+                    modelStatus.classList.add('online');
+                    modelStatusText.textContent = '模型已加载';
+                } else {
+                    modelStatus.classList.add('offline');
+                    modelStatusText.textContent = '模型未加载';
+                }
+
+                deviceStatus.classList.add('online');
+                deviceStatusText.textContent = `设备: ${data.device}`;
+            } catch (error) {
+                console.error('状态检查失败:', error);
+            }
+        }
+
+        // 设置事件监听
+        function setupEventListeners() {
+            // 拖放区域
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            // 文件输入
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            // 模式选择
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentMode = btn.dataset.mode;
+                    updateUI();
+                });
+            });
+
+            // 处理按钮
+            processBtn.addEventListener('click', processImage);
+
+            // 清除按钮
+            clearBtn.addEventListener('click', clearAll);
+        }
+
+        // 处理文件
+        function handleFile(file) {
+            if (!file.type.match(/image.*/)) {
+                showToast('请上传图像文件', 'error');
+                return;
+            }
+
+            currentFile = file;
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inputContainer.innerHTML = `<img src="${e.target.result}" alt="输入图像">`;
+            };
+            reader.readAsDataURL(file);
+
+            processBtn.disabled = false;
+            showToast('图像已加载', 'success');
+        }
+
+        // 处理图像
+        async function processImage() {
+            if (!currentFile) return;
+
+            loadingOverlay.classList.add('active');
+
+            try {
+                const formData = new FormData();
+                formData.append('image', currentFile);
+                formData.append('mode', currentMode);
+
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                // 显示结果
+                displayResults(data);
+
+                if (data.warning) {
+                    showToast(data.warning, 'error');
+                }
+
+            } catch (error) {
+                showToast('处理失败: ' + error.message, 'error');
+            } finally {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+
+        // 显示结果
+        function displayResults(data) {
+            // 显示处理步骤
+            if (currentMode === 'assisted') {
+                stepsPanel.style.display = 'block';
+
+                if (data.enhanced) {
+                    document.getElementById('step1').innerHTML =
+                        `<img src="data:image/png;base64,${data.enhanced}" alt="CLAHE增强">`;
+                }
+                if (data.denoised) {
+                    document.getElementById('step2').innerHTML =
+                        `<img src="data:image/png;base64,${data.denoised}" alt="中值滤波">`;
+                }
+                if (data.edges) {
+                    document.getElementById('step3').innerHTML =
+                        `<img src="data:image/png;base64,${data.edges}" alt="边缘检测">`;
+                }
+                if (data.roi_mask) {
+                    document.getElementById('step4').innerHTML =
+                        `<img src="data:image/png;base64,${data.roi_mask}" alt="ROI区域">`;
+                }
+                if (data.filtered) {
+                    document.getElementById('step5').innerHTML =
+                        `<img src="data:image/png;base64,${data.filtered}" alt="GHPF滤波">`;
+                }
+                if (data.traditional_prediction) {
+                    document.getElementById('step6').innerHTML =
+                        `<img src="data:image/png;base64,${data.traditional_prediction}" alt="传统预测">`;
+                }
+            } else {
+                stepsPanel.style.display = 'none';
+            }
+
+            // 显示U-Net结果
+            if (data.unet_prediction) {
+                resultContainer.innerHTML =
+                    `<img src="data:image/png;base64,${data.unet_prediction}" alt="U-Net预测">`;
+            }
+
+            // 显示统计信息
+            if (data.stats) {
+                statsBox.style.display = 'block';
+                document.getElementById('nodulePixels').textContent = data.stats.nodule_pixels;
+                document.getElementById('totalPixels').textContent = data.stats.total_pixels;
+                document.getElementById('percentage').textContent = data.stats.percentage + '%';
+            }
+
+            showToast('处理完成', 'success');
+        }
+
+        // 清除所有
+        function clearAll() {
+            currentFile = null;
+            fileInput.value = '';
+            processBtn.disabled = true;
+
+            inputContainer.innerHTML = '<span class="image-placeholder">等待上传图像...</span>';
+            resultContainer.innerHTML = '<span class="image-placeholder">等待处理...</span>';
+
+            // 清除处理步骤
+            for (let i = 1; i <= 6; i++) {
+                const stepNames = ['CLAHE增强', '中值滤波', '边缘检测', 'ROI区域', 'GHPF滤波', '传统预测'];
+                document.getElementById(`step${i}`).innerHTML =
+                    `<span class="image-placeholder">${stepNames[i-1]}</span>`;
+            }
+
+            statsBox.style.display = 'none';
+            showToast('已清除', 'success');
+        }
+
+        // 更新UI
+        function updateUI() {
+            if (currentMode === 'assisted') {
+                stepsPanel.style.display = 'block';
+            } else {
+                stepsPanel.style.display = 'none';
+            }
+        }
+
+        // 显示提示
+        function showToast(message, type = '') {
+            toast.textContent = message;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
