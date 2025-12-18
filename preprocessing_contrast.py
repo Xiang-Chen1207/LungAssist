@@ -640,6 +640,194 @@ class LIDC_ComparisonProcessor:
         print(f"详细对比图(C7-C12)已保存至: {save_path2}")
         plt.close()
 
+    def visualize_difficulty_levels(self, samples, df):
+        """可视化不同难度级别的样本：简单、中等、困难"""
+        method_cols = [col for col in df.columns if col.startswith('C')]
+        df['avg_dice'] = df[method_cols].mean(axis=1)
+
+        # 定义难度级别
+        difficulty_levels = {
+            'easy': {'min': 0.7, 'max': 1.0, 'color': 'green', 'label': '简单难度 (Dice >= 0.7)'},
+            'medium': {'min': 0.4, 'max': 0.7, 'color': 'orange', 'label': '中等难度 (0.4 <= Dice < 0.7)'},
+            'hard': {'min': 0.0, 'max': 0.4, 'color': 'red', 'label': '困难难度 (Dice < 0.4)'}
+        }
+
+        methods = {
+            'C1': self.method_C1, 'C2': self.method_C2, 'C3': self.method_C3,
+            'C4': self.method_C4, 'C5': self.method_C5, 'C6': self.method_C6,
+        }
+
+        for diff_name, diff_config in difficulty_levels.items():
+            # 筛选对应难度的样本
+            mask = (df['avg_dice'] >= diff_config['min']) & (df['avg_dice'] < diff_config['max'])
+            diff_samples = df[mask]
+
+            if len(diff_samples) == 0:
+                print(f"警告: 没有找到{diff_config['label']}的样本")
+                continue
+
+            # 选择最具代表性的样本（最接近中间值）
+            target_dice = (diff_config['min'] + diff_config['max']) / 2
+            best_idx = (diff_samples['avg_dice'] - target_dice).abs().idxmin()
+            sample = samples[best_idx]
+
+            img = sample['image']
+            gt = sample['mask']
+            sample_id = sample['id']
+
+            # 创建图形
+            fig = plt.figure(figsize=(24, 16))
+            fig.suptitle(f'{diff_config["label"]} - 样本: {sample_id}\n平均Dice: {df.loc[best_idx, "avg_dice"]:.3f}',
+                        fontsize=16, fontweight='bold', color=diff_config['color'])
+
+            # 第一行：原图和GT
+            ax1 = plt.subplot(7, 6, 1)
+            ax1.imshow(img, cmap='gray')
+            ax1.set_title('原始图像', fontsize=11, fontweight='bold')
+            ax1.axis('off')
+
+            ax2 = plt.subplot(7, 6, 2)
+            ax2.imshow(gt, cmap='Greens', alpha=0.8)
+            ax2.set_title('Ground Truth', fontsize=11, fontweight='bold')
+            ax2.axis('off')
+
+            # 叠加显示
+            ax3 = plt.subplot(7, 6, 3)
+            overlay = np.stack([img]*3, axis=-1).astype(float) / 255.0
+            overlay[gt > 0] = [0, 1, 0]  # GT显示为绿色
+            ax3.imshow(overlay)
+            ax3.set_title('原图+GT叠加', fontsize=11, fontweight='bold')
+            ax3.axis('off')
+
+            for i in range(4, 7):
+                ax = plt.subplot(7, 6, i)
+                ax.axis('off')
+
+            # 每种方法占一行
+            row = 1
+            for method_name, method_func in methods.items():
+                result = method_func(img)
+                dice = self.calculate_dice(gt, result['prediction'])
+
+                # Step 1: Enhanced
+                ax = plt.subplot(7, 6, row * 6 + 1)
+                ax.imshow(result['step1_enhanced'], cmap='gray')
+                ax.set_title(f'{method_name}: CLAHE增强', fontsize=9)
+                ax.axis('off')
+
+                # Step 2: Denoised
+                ax = plt.subplot(7, 6, row * 6 + 2)
+                ax.imshow(result['step2_denoised'], cmap='gray')
+                ax.set_title('去噪', fontsize=9)
+                ax.axis('off')
+
+                # Step 3: ROI
+                ax = plt.subplot(7, 6, row * 6 + 3)
+                ax.imshow(result['step3_roi'], cmap='gray')
+                ax.set_title('ROI区域', fontsize=9)
+                ax.axis('off')
+
+                # Step 4: Filtered
+                ax = plt.subplot(7, 6, row * 6 + 4)
+                ax.imshow(result['step4_filtered'], cmap='gray')
+                ax.set_title('GHPF滤波', fontsize=9)
+                ax.axis('off')
+
+                # Prediction
+                ax = plt.subplot(7, 6, row * 6 + 5)
+                overlay_pred = color.label2rgb(
+                    result['prediction'],
+                    image=img,
+                    bg_label=0,
+                    colors=['red'],
+                    alpha=0.4
+                )
+                ax.imshow(overlay_pred)
+                ax.set_title(f'预测结果', fontsize=9)
+                ax.axis('off')
+
+                # 对比图
+                ax = plt.subplot(7, 6, row * 6 + 6)
+                comparison = np.stack([img]*3, axis=-1).astype(float) / 255.0
+                comparison[result['prediction'] > 0] = [1, 0, 0]  # 预测为红色
+                comparison[gt > 0, 1] = 1  # GT为绿色通道
+                ax.imshow(comparison)
+                ax.set_title(f'Dice={dice:.3f}', fontsize=9, fontweight='bold',
+                           color='green' if dice > 0.5 else 'red')
+                ax.axis('off')
+
+                row += 1
+
+            plt.tight_layout()
+
+            save_path = os.path.join(SAVE_RESULT_DIR, f'difficulty_{diff_name}.png')
+            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+            print(f"{diff_config['label']}对比图已保存至: {save_path}")
+            plt.close()
+
+        # 绘制所有难度级别的对比总图
+        self._plot_difficulty_summary(samples, df, difficulty_levels)
+
+    def _plot_difficulty_summary(self, samples, df, difficulty_levels):
+        """绘制难度级别对比总结图"""
+        method_cols = [col for col in df.columns if col.startswith('C')]
+
+        fig, axes = plt.subplots(3, 4, figsize=(20, 15))
+        fig.suptitle('不同难度级别对比总结', fontsize=18, fontweight='bold')
+
+        for row_idx, (diff_name, diff_config) in enumerate(difficulty_levels.items()):
+            mask = (df['avg_dice'] >= diff_config['min']) & (df['avg_dice'] < diff_config['max'])
+            diff_samples = df[mask]
+
+            if len(diff_samples) == 0:
+                for col_idx in range(4):
+                    axes[row_idx, col_idx].axis('off')
+                    axes[row_idx, col_idx].text(0.5, 0.5, '无样本', ha='center', va='center')
+                continue
+
+            # 选择代表样本
+            target_dice = (diff_config['min'] + diff_config['max']) / 2
+            best_idx = (diff_samples['avg_dice'] - target_dice).abs().idxmin()
+            sample = samples[best_idx]
+
+            img = sample['image']
+            gt = sample['mask']
+
+            # C3方法结果
+            result = self.method_C3(img)
+            dice = self.calculate_dice(gt, result['prediction'])
+
+            # 原图
+            axes[row_idx, 0].imshow(img, cmap='gray')
+            axes[row_idx, 0].set_title(f'{diff_config["label"]}\n原图', fontsize=10, color=diff_config['color'])
+            axes[row_idx, 0].axis('off')
+
+            # GT
+            axes[row_idx, 1].imshow(gt, cmap='Greens')
+            axes[row_idx, 1].set_title('Ground Truth', fontsize=10)
+            axes[row_idx, 1].axis('off')
+
+            # C3预测
+            overlay_pred = color.label2rgb(result['prediction'], image=img, bg_label=0, colors=['red'], alpha=0.4)
+            axes[row_idx, 2].imshow(overlay_pred)
+            axes[row_idx, 2].set_title(f'C3预测 (Dice={dice:.3f})', fontsize=10)
+            axes[row_idx, 2].axis('off')
+
+            # 对比
+            comparison = np.stack([img]*3, axis=-1).astype(float) / 255.0
+            comparison[result['prediction'] > 0] = [1, 0, 0]
+            comparison[gt > 0, 1] = 1
+            axes[row_idx, 3].imshow(comparison)
+            axes[row_idx, 3].set_title('红:预测 绿:GT 黄:重叠', fontsize=10)
+            axes[row_idx, 3].axis('off')
+
+        plt.tight_layout()
+
+        save_path = os.path.join(SAVE_RESULT_DIR, 'difficulty_summary.png')
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        print(f"难度级别总结图已保存至: {save_path}")
+        plt.close()
+
 def reconstruction(seed, mask, method='dilation'):
     """灰度重建辅助函数"""
     from skimage.morphology import reconstruction as skimage_reconstruction
@@ -667,7 +855,10 @@ if __name__ == "__main__":
     
     # 3. 可视化详细对比
     processor.visualize_detailed_comparison(selected_sample, df)
-    
+
+    # 4. 可视化不同难度级别的样本
+    processor.visualize_difficulty_levels(samples, df)
+
     print("\n处理完成！")
     print(f"CSV结果: {CSV_OUTPUT}")
     print(f"统计信息: {os.path.join(SAVE_RESULT_DIR, 'method_statistics.csv')}")
