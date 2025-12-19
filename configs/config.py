@@ -5,11 +5,12 @@ import os
 import torch
 
 # ==================== 路径配置 ====================
-# 数据根目录 - 请根据你的实际路径修改
-DATA_ROOT = "/home/chenx/code/medical_project/data/LIDC-IDRI-slices"
-
 # 项目根目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 数据根目录 - 请根据你的实际路径修改
+# 可以设置环境变量 LIDC_DATA_ROOT 来指定数据路径
+DATA_ROOT = os.environ.get('LIDC_DATA_ROOT', os.path.join(PROJECT_ROOT, "data", "LIDC-IDRI-slices"))
 
 # 划分后的数据目录
 SPLIT_DATA_DIR = os.path.join(PROJECT_ROOT, "data_split")
