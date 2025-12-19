@@ -3,820 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>肺结节标注辅助工具 - LIDC-IDRI</title>
+    <title>AI 智能肺结节诊断系统 v3.0 Pro</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --border: #334155;
+            --success: #22c55e;
+            --doctor-color: #ef4444;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            color: #fff;
-        }
-
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 1px solid #333;
-            margin-bottom: 20px;
-        }
-
-        header h1 {
-            font-size: 28px;
-            color: #4CAF50;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            color: #888;
-            font-size: 14px;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 10px;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .status-dot.online {
-            background: #4CAF50;
-            box-shadow: 0 0 10px #4CAF50;
-        }
-
-        .status-dot.offline {
-            background: #f44336;
-        }
-
-        .control-panel {
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .drop-zone {
-            flex: 0 0 300px;
-            height: 150px;
-            border: 3px dashed #444;
-            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(0,0,0,0.2);
-        }
-
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.1);
-        }
-
-        .drop-zone svg {
-            width: 48px;
-            height: 48px;
-            fill: #666;
-            margin-bottom: 10px;
-        }
-
-        .drop-zone.dragover svg {
-            fill: #4CAF50;
-        }
-
-        .drop-zone p {
-            color: #888;
-            font-size: 14px;
-            text-align: center;
-        }
-
-        .mode-selector {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .mode-selector h3 {
-            font-size: 14px;
-            color: #888;
-            margin-bottom: 12px;
-        }
-
-        .mode-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 15px 20px;
-            border: 2px solid #333;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.3);
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .mode-btn:hover {
-            border-color: #4CAF50;
-        }
-
-        .mode-btn.active {
-            border-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.2);
-        }
-
-        .mode-btn h4 {
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-
-        .mode-btn p {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .btn-primary:disabled {
-            background: #333;
-            color: #666;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn-secondary {
-            background: #333;
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            background: #444;
-        }
-
-        .results-container {
-            display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 1200px) {
-            .results-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .panel {
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .panel h3 {
-            font-size: 16px;
-            color: #4CAF50;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
-        }
-
-        .image-container {
-            position: relative;
-            background: #1a1a1a;
-            border-radius: 8px;
             overflow: hidden;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        .image-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .image-placeholder {
-            color: #444;
-            font-size: 14px;
-        }
-
-        .processing-steps {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-
-        .step-item {
-            text-align: center;
-        }
-
-        .step-item .image-container {
-            aspect-ratio: 1;
-            margin-bottom: 8px;
-        }
-
-        .step-item p {
-            font-size: 12px;
-            color: #888;
-        }
-
-        .result-panel .image-container {
-            min-height: 300px;
-        }
-
-        .stats-box {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-        }
-
-        .stats-box h4 {
-            font-size: 14px;
-            color: #4CAF50;
-            margin-bottom: 10px;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-            font-size: 13px;
-        }
-
-        .stat-row:last-child {
-            border-bottom: none;
-        }
-
-        .stat-label {
-            color: #888;
-        }
-
-        .stat-value {
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .spinner {
-            width: 60px;
+        /* Header */
+        header {
             height: 60px;
-            border: 4px solid #333;
-            border-top-color: #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
+        }
+        .brand { font-size: 18px; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+
+        /* Main Grid */
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 1px;
+            background: var(--border);
+            overflow: hidden; /* 防止撑开页面 */
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .sidebar, .results-panel { background: var(--bg-dark); padding: 20px; display: flex; flex-direction: column; gap: 20px; z-index: 2; }
 
-        .loading-text {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #888;
-        }
+        /* Mode Tabs */
+        .mode-tabs { display: flex; background: var(--bg-panel); border-radius: 8px; padding: 4px; border: 1px solid var(--border); }
+        .mode-tab { flex: 1; text-align: center; padding: 8px; font-size: 13px; cursor: pointer; border-radius: 6px; color: var(--text-dim); transition: 0.2s; }
+        .mode-tab.active { background: var(--accent); color: #0f172a; font-weight: bold; }
 
-        .legend {
+        /* Buttons */
+        .tool-group h3 { font-size: 12px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 0.5px; }
+        .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); cursor: pointer; margin-bottom: 8px; transition: 0.2s; font-size: 14px; }
+        .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .btn.primary { background: var(--accent); color: #000; border: none; font-weight: 600; }
+        .btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+        .btn.active { background: rgba(56, 189, 248, 0.2); border-color: var(--accent); color: var(--accent); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Workspace (Center) */
+        .workspace-area {
+            background: #000;
             display: flex;
-            gap: 20px;
-            margin-top: 15px;
-            justify-content: center;
+            flex-direction: column; /* 垂直排列：画布在上，画廊在下 */
+            position: relative;
+            overflow: hidden;
         }
 
-        .legend-item {
+        .canvas-wrapper {
+            flex: 1;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
+            justify-content: center;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
         }
 
-        .legend-color {
-            width: 20px;
-            height: 12px;
-            border-radius: 3px;
-        }
-
-        .legend-color.red {
-            background: rgba(255, 0, 0, 0.6);
-        }
-
-        .legend-color.green {
-            background: rgba(0, 255, 0, 0.6);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 30px;
-            background: #333;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 1001;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
-        .toast.error {
-            background: #f44336;
-        }
-
-        .toast.success {
-            background: #4CAF50;
-        }
-
-        /* 画布容器 - 用于ROI绘制 */
         .canvas-container {
             position: relative;
+            width: 512px;
+            height: 512px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            background: #000;
         }
+        canvas { position: absolute; top: 0; left: 0; }
+        #layerImg { z-index: 10; }
+        #layerDraw { z-index: 20; }
+        #layerAI { z-index: 30; pointer-events: none; transition: opacity 0.3s; }
 
-        .canvas-container canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            cursor: crosshair;
+        /* 底部图像处理画廊 (新增) */
+        .process-gallery {
+            height: 0; /* 默认隐藏 */
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+            overflow-x: auto;
+            transition: height 0.3s ease;
         }
+        .process-gallery.show { height: 140px; }
 
-        .instructions {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(76, 175, 80, 0.1);
-            border-radius: 8px;
-            font-size: 12px;
-            color: #888;
-            text-align: center;
+        .step-card {
+            min-width: 100px;
+            height: 110px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
         }
+        .step-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .step-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.3); }
+        
+        .step-img { flex: 1; width: 100%; object-fit: cover; background: #000; }
+        .step-label { height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim); background: rgba(0,0,0,0.3); }
 
-        #fileInput {
-            display: none;
-        }
+        /* Status & Loading */
+        .status-box { padding: 15px; border-radius: 8px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); margin-top: 10px; display: none; }
+        #loadingMask { position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: none; align-items: center; justify-content: center; color: white; flex-direction: column; gap: 10px; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #fff; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>肺结节标注辅助工具</h1>
-            <p>LIDC-IDRI 医学图像分析系统</p>
-            <div class="status-bar">
-                <div class="status-item">
-                    <span class="status-dot" id="modelStatus"></span>
-                    <span id="modelStatusText">检查模型状态...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-dot" id="deviceStatus"></span>
-                    <span id="deviceStatusText">检查设备...</span>
-                </div>
-            </div>
-        </header>
 
-        <div class="control-panel">
-            <div class="drop-zone" id="dropZone">
-                <svg viewBox="0 0 24 24">
-                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
-                </svg>
-                <p>拖拽图片到此处<br>或点击选择文件</p>
-            </div>
-            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff">
+<header>
+    <div class="brand">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>LungAI Assist Pro</span>
+    </div>
+    <div style="font-size: 12px; color: var(--text-dim);">U-Net Model v1.2</div>
+</header>
 
-            <div class="mode-selector">
-                <h3>选择标记模式</h3>
-                <div class="mode-buttons">
-                    <div class="mode-btn active" data-mode="assisted">
-                        <h4>辅助标记</h4>
-                        <p>C3处理流程 + U-Net</p>
-                    </div>
-                    <div class="mode-btn" data-mode="direct">
-                        <h4>直接标记</h4>
-                        <p>仅U-Net模型预测</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="processBtn" disabled>开始处理</button>
-                <button class="btn btn-secondary" id="clearBtn">清除</button>
+<main>
+    <div class="sidebar">
+        <div class="tool-group">
+            <h3>工作模式</h3>
+            <div class="mode-tabs">
+                <div class="mode-tab active" onclick="switchMode('auto')" id="tabAuto">AI 全自动</div>
+                <div class="mode-tab" onclick="switchMode('assist')" id="tabAssist">专家协作+解析</div>
             </div>
         </div>
 
-        <div class="results-container">
-            <!-- 左侧：输入图像 -->
-            <div class="panel">
-                <h3>输入图像</h3>
-                <div class="canvas-container">
-                    <div class="image-container" id="inputContainer">
-                        <span class="image-placeholder">等待上传图像...</span>
-                    </div>
-                </div>
-                <div class="instructions" id="roiInstructions" style="display:none;">
-                    辅助模式下可在图像上框选感兴趣区域
-                </div>
-            </div>
+        <div class="tool-group">
+            <h3>1. 影像导入</h3>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                上传 CT
+            </button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
 
-            <!-- 中间：处理步骤 -->
-            <div class="panel" id="stepsPanel">
-                <h3>C3 处理流程 (CLAHE + 中值 + 边缘检测 + GHPF + Otsu)</h3>
-                <div class="processing-steps">
-                    <div class="step-item">
-                        <div class="image-container" id="step1">
-                            <span class="image-placeholder">CLAHE增强</span>
-                        </div>
-                        <p>1. CLAHE增强</p>
-                    </div>
-                    <div class="step-item">
-                        <div class="image-container" id="step2">
-                            <span class="image-placeholder">中值滤波</span>
-                        </div>
-                        <p>2. 中值滤波去噪</p>
-                    </div>
-                    <div class="step-item">
-                        <div class="image-container" id="step3">
-                            <span class="image-placeholder">边缘检测</span>
-                        </div>
-                        <p>3. Canny边缘检测</p>
-                    </div>
-                    <div class="step-item">
-                        <div class="image-container" id="step4">
-                            <span class="image-placeholder">ROI区域</span>
-                        </div>
-                        <p>4. ROI区域提取</p>
-                    </div>
-                    <div class="step-item">
-                        <div class="image-container" id="step5">
-                            <span class="image-placeholder">GHPF滤波</span>
-                        </div>
-                        <p>5. GHPF高通滤波</p>
-                    </div>
-                    <div class="step-item">
-                        <div class="image-container" id="step6">
-                            <span class="image-placeholder">传统预测</span>
-                        </div>
-                        <p>6. 传统方法预测</p>
-                    </div>
-                </div>
-            </div>
+        <div class="tool-group" id="drawTools" style="display: none;">
+            <h3>2. 人工复核</h3>
+            <button class="btn active" id="btnPen" onclick="setTool('pen')">画笔 (标红)</button>
+            <button class="btn" id="btnEraser" onclick="setTool('eraser')">橡皮擦</button>
+            <button class="btn" onclick="clearDraw()">清除标注</button>
+        </div>
 
-            <!-- 右侧：U-Net结果 -->
-            <div class="panel result-panel">
-                <h3>U-Net 模型预测结果</h3>
-                <div class="image-container" id="resultContainer">
-                    <span class="image-placeholder">等待处理...</span>
-                </div>
-                <div class="legend">
-                    <div class="legend-item">
-                        <span class="legend-color red"></span>
-                        <span>传统方法</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color green"></span>
-                        <span>U-Net预测</span>
-                    </div>
-                </div>
-                <div class="stats-box" id="statsBox" style="display:none;">
-                    <h4>检测统计</h4>
-                    <div class="stat-row">
-                        <span class="stat-label">结节像素数</span>
-                        <span class="stat-value" id="nodulePixels">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">总像素数</span>
-                        <span class="stat-value" id="totalPixels">-</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">占比</span>
-                        <span class="stat-value" id="percentage">-</span>
-                    </div>
-                </div>
-            </div>
+        <div style="margin-top: auto;">
+            <button class="btn primary" id="btnRun" disabled onclick="runAnalysis()">
+                开始分析
+            </button>
         </div>
     </div>
 
-    <div class="loading-overlay" id="loadingOverlay">
-        <div style="text-align: center;">
-            <div class="spinner"></div>
-            <p class="loading-text">处理中，请稍候...</p>
+    <div class="workspace-area">
+        <div class="canvas-wrapper">
+            <div class="canvas-container" id="canvasContainer" style="display:none;">
+                <canvas id="layerImg" width="512" height="512"></canvas>
+                <canvas id="layerDraw" width="512" height="512"></canvas>
+                <canvas id="layerAI" width="512" height="512"></canvas>
+                
+                <div id="loadingMask">
+                    <div class="spinner"></div>
+                    <span>计算中...</span>
+                </div>
+            </div>
+            <div id="emptyState" style="color: #64748b;">请上传图片</div>
         </div>
+
+        <div class="process-gallery" id="processGallery">
+            </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="results-panel">
+        <div class="tool-group">
+            <h3>图例</h3>
+            <div class="legend-item" style="display:flex; gap:10px; align-items:center; font-size:14px;"><span style="width:12px; height:12px; background:#ef4444; border-radius:50%;"></span> 医生标注</div>
+            <div class="legend-item" style="display:flex; gap:10px; align-items:center; font-size:14px;"><span style="width:12px; height:12px; background:#22c55e; border-radius:50%;"></span> AI 预测</div>
+        </div>
 
-    <script>
-        // 全局变量
-        let currentFile = null;
-        let currentMode = 'assisted';
+        <div class="tool-group">
+            <h3>图层控制</h3>
+            <label style="display:flex;gap:8px;cursor:pointer;"><input type="checkbox" id="chkShowAI" checked onchange="toggleLayer('ai')"> 显示 AI</label>
+            <label style="display:flex;gap:8px;cursor:pointer;margin-top:8px;"><input type="checkbox" id="chkShowDoc" checked onchange="toggleLayer('doc')"> 显示 医生</label>
+        </div>
 
-        // DOM元素
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const processBtn = document.getElementById('processBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const inputContainer = document.getElementById('inputContainer');
-        const resultContainer = document.getElementById('resultContainer');
-        const stepsPanel = document.getElementById('stepsPanel');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const statsBox = document.getElementById('statsBox');
-        const toast = document.getElementById('toast');
+        <div class="status-box" id="resultBox">
+            <h4 style="color: var(--success); margin-bottom: 5px;">分析完成</h4>
+            <p id="resultText" style="font-size: 13px; color: var(--text-dim);"></p>
+        </div>
+    </div>
+</main>
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            checkStatus();
-            setupEventListeners();
-        });
+<script>
+    let currentMode = 'auto';
+    let currentFile = null;
+    let originalImageSrc = null; // 保存原始图片的Base64，用于从滤镜预览切回
+    let isDrawing = false;
+    let tool = 'pen';
 
-        // 检查系统状态
-        async function checkStatus() {
-            try {
-                const response = await fetch('/status');
-                const data = await response.json();
+    const ctxImg = document.getElementById('layerImg').getContext('2d');
+    const ctxDraw = document.getElementById('layerDraw').getContext('2d');
+    const ctxAI = document.getElementById('layerAI').getContext('2d');
 
-                const modelStatus = document.getElementById('modelStatus');
-                const modelStatusText = document.getElementById('modelStatusText');
-                const deviceStatus = document.getElementById('deviceStatus');
-                const deviceStatusText = document.getElementById('deviceStatusText');
-
-                if (data.model_loaded) {
-                    modelStatus.classList.add('online');
-                    modelStatusText.textContent = '模型已加载';
-                } else {
-                    modelStatus.classList.add('offline');
-                    modelStatusText.textContent = '模型未加载';
-                }
-
-                deviceStatus.classList.add('online');
-                deviceStatusText.textContent = `设备: ${data.device}`;
-            } catch (error) {
-                console.error('状态检查失败:', error);
-            }
+    // 模式切换
+    function switchMode(mode) {
+        currentMode = mode;
+        document.getElementById('tabAuto').className = `mode-tab ${mode==='auto'?'active':''}`;
+        document.getElementById('tabAssist').className = `mode-tab ${mode==='assist'?'active':''}`;
+        
+        // 显示/隐藏工具
+        document.getElementById('drawTools').style.display = mode === 'assist' ? 'block' : 'none';
+        document.getElementById('layerDraw').style.display = mode === 'assist' ? 'block' : 'none';
+        
+        // 显示/隐藏底部画廊
+        const gallery = document.getElementById('processGallery');
+        if (mode === 'assist' && gallery.innerHTML.trim() !== "") {
+            gallery.classList.add('show');
+        } else {
+            gallery.classList.remove('show');
         }
+    }
 
-        // 设置事件监听
-        function setupEventListeners() {
-            // 拖放区域
-            dropZone.addEventListener('click', () => fileInput.click());
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('dragover');
-            });
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    handleFile(files[0]);
-                }
-            });
+    // 图片上传
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        if (!e.target.files.length) return;
+        currentFile = e.target.files[0];
+        
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('canvasContainer').style.display = 'block';
+        document.getElementById('btnRun').disabled = false;
+        document.getElementById('resultBox').style.display = 'none';
+        
+        // 清理旧数据
+        document.getElementById('processGallery').innerHTML = '';
+        document.getElementById('processGallery').classList.remove('show');
 
-            // 文件输入
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0]);
-                }
-            });
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            originalImageSrc = evt.target.result;
+            loadBase64ToCanvas(originalImageSrc, ctxImg);
+        };
+        reader.readAsDataURL(currentFile);
+        
+        clearDraw();
+        ctxAI.clearRect(0,0,512,512);
+    });
 
-            // 模式选择
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentMode = btn.dataset.mode;
-                    updateUI();
-                });
-            });
+    // 运行分析
+    async function runAnalysis() {
+        if (!currentFile) return;
+        const loading = document.getElementById('loadingMask');
+        loading.style.display = 'flex';
 
-            // 处理按钮
-            processBtn.addEventListener('click', processImage);
+        const formData = new FormData();
+        formData.append('image', currentFile);
 
-            // 清除按钮
-            clearBtn.addEventListener('click', clearAll);
-        }
+        try {
+            const res = await fetch('/process', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.error) throw new Error(data.error);
 
-        // 处理文件
-        function handleFile(file) {
-            if (!file.type.match(/image.*/)) {
-                showToast('请上传图像文件', 'error');
-                return;
-            }
-
-            currentFile = file;
-
-            // 显示预览
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                inputContainer.innerHTML = `<img src="${e.target.result}" alt="输入图像">`;
+            // 1. 绘制 AI Mask (透明 PNG)
+            const aiImg = new Image();
+            aiImg.onload = () => {
+                ctxAI.clearRect(0,0,512,512);
+                ctxAI.drawImage(aiImg, 0, 0, 512, 512);
             };
-            reader.readAsDataURL(file);
+            aiImg.src = 'data:image/png;base64,' + data.ai_mask_png;
 
-            processBtn.disabled = false;
-            showToast('图像已加载', 'success');
-        }
+            // 2. 结果文本
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('resultText').innerText = data.stats.detected ? 
+                `疑似结节 (置信度: ${data.stats.confidence})` : "无显著异常";
 
-        // 处理图像
-        async function processImage() {
-            if (!currentFile) return;
+            // 3. 生成底部处理流程画廊
+            const gallery = document.getElementById('processGallery');
+            gallery.innerHTML = ''; // 清空
 
-            loadingOverlay.classList.add('active');
+            // 插入原始图卡片
+            addGalleryItem(gallery, originalImageSrc, "原始图像", true);
 
-            try {
-                const formData = new FormData();
-                formData.append('image', currentFile);
-                formData.append('mode', currentMode);
-
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    showToast(data.error, 'error');
-                    return;
-                }
-
-                // 显示结果
-                displayResults(data);
-
-                if (data.warning) {
-                    showToast(data.warning, 'error');
-                }
-
-            } catch (error) {
-                showToast('处理失败: ' + error.message, 'error');
-            } finally {
-                loadingOverlay.classList.remove('active');
-            }
-        }
-
-        // 显示结果
-        function displayResults(data) {
-            // 显示处理步骤
-            if (currentMode === 'assisted') {
-                stepsPanel.style.display = 'block';
-
-                if (data.enhanced) {
-                    document.getElementById('step1').innerHTML =
-                        `<img src="data:image/png;base64,${data.enhanced}" alt="CLAHE增强">`;
-                }
-                if (data.denoised) {
-                    document.getElementById('step2').innerHTML =
-                        `<img src="data:image/png;base64,${data.denoised}" alt="中值滤波">`;
-                }
-                if (data.edges) {
-                    document.getElementById('step3').innerHTML =
-                        `<img src="data:image/png;base64,${data.edges}" alt="边缘检测">`;
-                }
-                if (data.roi_mask) {
-                    document.getElementById('step4').innerHTML =
-                        `<img src="data:image/png;base64,${data.roi_mask}" alt="ROI区域">`;
-                }
-                if (data.filtered) {
-                    document.getElementById('step5').innerHTML =
-                        `<img src="data:image/png;base64,${data.filtered}" alt="GHPF滤波">`;
-                }
-                if (data.traditional_prediction) {
-                    document.getElementById('step6').innerHTML =
-                        `<img src="data:image/png;base64,${data.traditional_prediction}" alt="传统预测">`;
-                }
-            } else {
-                stepsPanel.style.display = 'none';
+            // 插入步骤图
+            for (const [name, b64] of Object.entries(data.steps)) {
+                // name 格式可能是 "1_Gray", 处理一下显示文本
+                const label = name.split('_')[1] || name; 
+                addGalleryItem(gallery, 'data:image/png;base64,'+b64, label);
             }
 
-            // 显示U-Net结果
-            if (data.unet_prediction) {
-                resultContainer.innerHTML =
-                    `<img src="data:image/png;base64,${data.unet_prediction}" alt="U-Net预测">`;
+            // 如果是协助模式，自动展开画廊
+            if (currentMode === 'assist') {
+                gallery.classList.add('show');
             }
 
-            // 显示统计信息
-            if (data.stats) {
-                statsBox.style.display = 'block';
-                document.getElementById('nodulePixels').textContent = data.stats.nodule_pixels;
-                document.getElementById('totalPixels').textContent = data.stats.total_pixels;
-                document.getElementById('percentage').textContent = data.stats.percentage + '%';
-            }
-
-            showToast('处理完成', 'success');
+        } catch (e) {
+            alert(e.message);
+        } finally {
+            loading.style.display = 'none';
         }
+    }
 
-        // 清除所有
-        function clearAll() {
-            currentFile = null;
-            fileInput.value = '';
-            processBtn.disabled = true;
+    // 辅助：添加画廊卡片
+    function addGalleryItem(container, src, label, isOriginal=false) {
+        const div = document.createElement('div');
+        div.className = 'step-card' + (isOriginal ? ' active' : '');
+        div.onclick = function() {
+            // 切换主画布显示
+            loadBase64ToCanvas(src, ctxImg);
+            // 高亮当前卡片
+            document.querySelectorAll('.step-card').forEach(c => c.classList.remove('active'));
+            div.classList.add('active');
+        };
 
-            inputContainer.innerHTML = '<span class="image-placeholder">等待上传图像...</span>';
-            resultContainer.innerHTML = '<span class="image-placeholder">等待处理...</span>';
+        const img = document.createElement('img');
+        img.className = 'step-img';
+        img.src = src;
 
-            // 清除处理步骤
-            for (let i = 1; i <= 6; i++) {
-                const stepNames = ['CLAHE增强', '中值滤波', '边缘检测', 'ROI区域', 'GHPF滤波', '传统预测'];
-                document.getElementById(`step${i}`).innerHTML =
-                    `<span class="image-placeholder">${stepNames[i-1]}</span>`;
-            }
+        const span = document.createElement('span');
+        span.className = 'step-label';
+        span.innerText = label;
 
-            statsBox.style.display = 'none';
-            showToast('已清除', 'success');
+        div.appendChild(img);
+        div.appendChild(span);
+        container.appendChild(div);
+    }
+
+    function loadBase64ToCanvas(src, ctx) {
+        const img = new Image();
+        img.onload = () => {
+            ctx.clearRect(0,0,512,512);
+            ctx.drawImage(img, 0, 0, 512, 512);
+        };
+        img.src = src;
+    }
+
+    // 画笔功能
+    const drawCanvas = document.getElementById('layerDraw');
+    ctxDraw.lineCap = 'round'; ctxDraw.lineWidth = 3; ctxDraw.strokeStyle = '#ef4444';
+
+    drawCanvas.addEventListener('mousedown', startDraw);
+    drawCanvas.addEventListener('mousemove', draw);
+    drawCanvas.addEventListener('mouseup', () => isDrawing=false);
+    drawCanvas.addEventListener('mouseout', () => isDrawing=false);
+
+    function startDraw(e) {
+        if(currentMode !== 'assist') return;
+        isDrawing=true; 
+        ctxDraw.beginPath();
+        draw(e);
+    }
+    function draw(e) {
+        if(!isDrawing || currentMode!=='assist') return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if(tool==='pen') {
+            ctxDraw.globalCompositeOperation='source-over';
+            ctxDraw.lineTo(x,y); ctxDraw.stroke(); ctxDraw.beginPath(); ctxDraw.moveTo(x,y);
+        } else {
+            ctxDraw.globalCompositeOperation='destination-out';
+            ctxDraw.arc(x,y,10,0,Math.PI*2); ctxDraw.fill();
         }
+    }
 
-        // 更新UI
-        function updateUI() {
-            if (currentMode === 'assisted') {
-                stepsPanel.style.display = 'block';
-            } else {
-                stepsPanel.style.display = 'none';
-            }
-        }
+    // 工具函数
+    function setTool(t) { tool=t; document.getElementById('btnPen').className = t==='pen'?'btn active':'btn'; document.getElementById('btnEraser').className = t==='eraser'?'btn active':'btn'; }
+    function clearDraw() { ctxDraw.clearRect(0,0,512,512); }
+    function toggleLayer(l) { 
+        if(l==='ai') document.getElementById('layerAI').style.opacity = document.getElementById('chkShowAI').checked?1:0;
+        if(l==='doc') document.getElementById('layerDraw').style.opacity = document.getElementById('chkShowDoc').checked?1:0;
+    }
 
-        // 显示提示
-        function showToast(message, type = '') {
-            toast.textContent = message;
-            toast.className = 'toast show ' + type;
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-    </script>
+    switchMode('auto'); // init
+</script>
 </body>
 </html>
